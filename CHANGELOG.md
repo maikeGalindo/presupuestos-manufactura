@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.6 (Bullet 1: refinamientos)
+- Basic Input sin subprocesos: los procesos se administran en Sales Plan (renglones por proceso, columnas por producto, agregar/quitar procesos).
+- Production Plan con conceptos resumidos y acrónimos; HC sin decimales con nota al pie; Op. time total y eficiencia de planta (Std total ÷ Op. time total).
+- Se quita el apartado de Overtime y el renglón de pcs/WD Overtime (se verá como desviación contra actuales).
+- Nueva hoja "Production by Product": reporte calculado por producto, con selector.
+
 ## v0.5 (Bullet 1: ajustes de Sales Plan y Production Plan)
 - Basic Input: tipo de cambio general, paros técnicos y días festivos en renglones separados, eficiencia fuera de este módulo (lista de subprocesos con agregar/quitar).
 - Sales Plan: agregar, quitar y renombrar productos; tiempos estándar por pieza y proceso (editables) y tiempo estándar total de piezas vendidas.
