@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Presupuestos manufactura</title>
+<style>
+:root{--gr:#2A2F34;--gr2:#3A4047;--bg:#EEF0F1;--ink:#1D2226;--mut:#68727A;--line:#D3D8DB;--cy:#0B6B7A;--cyl:#E1EDEF;--card:#fff}
+*{box-sizing:border-box}
+body{margin:0;min-width:1100px;background:var(--bg);color:var(--ink);font:14px/1.45 "Segoe UI",system-ui,sans-serif;display:grid;grid-template-columns:240px 1fr}
+aside{background:var(--gr);color:#DDE2E5;height:100vh;position:sticky;top:0;padding:24px 0}
+aside h1{font-size:16px;margin:0 22px 4px;color:#fff;font-weight:600}
+aside p{margin:0 22px 22px;color:#9AA4AB;font-size:12px}
+aside .g{margin:18px 22px 6px;font-size:12px;color:#9AA4AB}
+aside button,aside .soon{display:flex;justify-content:space-between;width:100%;padding:9px 22px;background:none;border:0;border-left:3px solid transparent;color:inherit;font:inherit;text-align:left}
+aside button{cursor:pointer}aside button:hover{background:var(--gr2)}
+aside button[aria-selected=true]{background:var(--gr2);border-left-color:#3FB4C6;color:#fff;font-weight:600}
+aside .soon{opacity:.5}
+main{padding:28px 36px;max-width:1500px}
+h2{margin:0 0 16px;font-size:22px;font-weight:600}
+h3{margin:26px 0 8px;font-size:14px;font-weight:600}
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:22px}
+.k{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--cy);padding:12px 14px}
+.k span{display:block;color:var(--mut);font-size:12px}.k b{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
+.wrap{overflow-x:auto;border:1px solid var(--line);background:var(--card)}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th{background:var(--gr);color:#fff;font-weight:600;text-align:right;padding:8px 10px;white-space:nowrap}
+td{padding:6px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left;position:sticky;left:0}
+td:first-child{background:var(--card)}
+tr.tot td{background:var(--cyl);font-weight:600}
+tr.sub td{background:#F6F7F8;color:var(--mut)}
+input{font:inherit;color:inherit;background:#fff;border:1px solid var(--line);padding:4px 6px;width:80px;text-align:right}
+input.t{width:170px;text-align:left}
+input:focus-visible,button:focus-visible{outline:2px solid var(--cy)}
+.row{display:flex;gap:24px;margin-bottom:6px}label{display:grid;gap:3px;color:var(--mut);font-size:12px}
+.b{background:var(--cy);color:#fff;border:0;padding:8px 16px;font:inherit;cursor:pointer;margin-top:12px}
+.g2{background:none;border:1px solid var(--line);padding:3px 8px;font:inherit;cursor:pointer;color:var(--ink)}
+.n{color:var(--mut);font-size:12px;margin-top:8px}
+</style></head><body>
+<aside><h1>Presupuestos manufactura</h1><p>Plan anual · v0.2</p>
+<div class="g">Bullet 1 · Ventas y producción</div>
+<nav id="nav"></nav>
+<div class="g">Próximos bullets</div>
+<div class="soon">Gente y mano de obra<small>2</small></div><div class="soon">Inversiones y gasto<small>3</small></div><div class="soon">P&amp;L y board<small>4</small></div></aside>
+<main id="app"></main>
+<script>
+const M=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],KEY='presupuestos-manufactura-v0.2';
+const TABS=[['sup','Supuestos'],['pro','Productos'],['ven','Ventas'],['prd','Producción']];
+const nuevo=()=>({n:'Producto',p:0,mp:0,sc:0,i0:0,h:[0,0,0,0],v:Array(12).fill(0)});
+const def=()=>({hp:190,cob:1,sp:[{n:'Corte',e:85},{n:'Ensamble',e:80},{n:'Acabado',e:85},{n:'Empaque',e:90}],pr:[{n:'Producto A',p:100,mp:40,sc:3,i0:1000,h:[.1,.25,.1,.05],v:Array(12).fill(1000)}]});
+let S,tab='sup';
+try{S=JSON.parse(localStorage.getItem(KEY))||def()}catch(e){S=def()}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const f=(x,d=0)=>x.toLocaleString('es-MX',{minimumFractionDigits:d,maximumFractionDigits:d});
+const sum=a=>a.reduce((s,x)=>s+x,0);
+const I=(k,v,c='')=>`<input class="${c}" data-k="${k}" value="${v}" ${c?'':'inputmode="decimal"'}>`;
+function calc(){const z=()=>Array(12).fill(0),r={ven:z(),vp:z(),pzs:z(),inv:z(),mp:z(),std:S.sp.map(z)};
+ S.pr.forEach(p=>{let inv=p.i0||0;for(let m=0;m<12;m++){const v=p.v[m],fin=S.cob*p.v[Math.min(m+1,11)],q=Math.max(0,v+fin-inv);inv+=q-v;
+  r.vp[m]+=v;r.ven[m]+=v*p.p;r.pzs[m]+=q;r.inv[m]+=inv;r.mp[m]+=q*p.mp*(1+p.sc/100);
+  S.sp.forEach((_,i)=>r.std[i][m]+=q*(p.h[i]||0))}});
+ const real=r.std.map((a,i)=>a.map(h=>h/(Math.max(S.sp[i].e,1)/100))),hc=real.map(a=>a.map(h=>h/S.hp));
+ r.real=real;r.hc=hc;r.hct=r.pzs.map((_,m)=>sum(hc.map(a=>a[m])));return r}
+const head=(l,t)=>`<tr><th>${l}</th>${M.map(m=>`<th>${m}</th>`).join('')}<th>${t}</th></tr>`;
+const row=(l,a,d=0,mx=0,c='')=>`<tr class="${c}"><td>${l}</td>${a.map(x=>`<td>${f(x,d)}</td>`).join('')}<td>${f(mx?Math.max(...a):sum(a),d)}</td></tr>`;
+function kpis(r){const sd=sum(r.std.flat()),rl=sum(r.real.flat());
+ return `<div class="kpis">${[['Ventas anuales','$'+f(sum(r.ven))],['Piezas a producir',f(sum(r.pzs))],['Materia prima','$'+f(sum(r.mp))],['Horas reales',f(rl)],['Eficiencia global',rl?f(sd/rl*100,1)+'%':'-'],['Headcount pico',f(Math.max(...r.hct),1)]].map(k=>`<div class="k"><span>${k[0]}</span><b>${k[1]}</b></div>`).join('')}</div>`}
+function view(r){
+ if(tab=='sup')return `<div class="row"><label>Horas disponibles por persona al mes${I('hp',S.hp)}</label><label>Cobertura de inventario final (meses de venta)${I('cob',S.cob)}</label></div>
+ <h3>Subprocesos y eficiencia planeada</h3><div class="wrap"><table><tr><th>Subproceso</th><th>Eficiencia %</th></tr>${S.sp.map((s,i)=>`<tr><td>${I(`sp.${i}.n`,s.n,'t')}</td><td>${I(`sp.${i}.e`,s.e)}</td></tr>`).join('')}</table></div>
+ <p class="n">Producción del mes = ventas + inventario final objetivo − inventario inicial. En diciembre se asume la venta de enero igual a la de diciembre.</p>`;
+ if(tab=='pro')return `<div class="wrap"><table><tr><th>Producto</th><th>Precio</th><th>MP std/pza</th><th>Scrap %</th><th>Inv. inicial pzas</th>${S.sp.map(s=>`<th>h std ${s.n}</th>`).join('')}<th></th></tr>
+ ${S.pr.map((p,j)=>`<tr><td>${I(`pr.${j}.n`,p.n,'t')}</td><td>${I(`pr.${j}.p`,p.p)}</td><td>${I(`pr.${j}.mp`,p.mp)}</td><td>${I(`pr.${j}.sc`,p.sc)}</td><td>${I(`pr.${j}.i0`,p.i0)}</td>${S.sp.map((_,i)=>`<td>${I(`pr.${j}.h.${i}`,p.h[i])}</td>`).join('')}<td><button class="g2" data-a="del" data-j="${j}">Quitar</button></td></tr>`).join('')}</table></div>
+ <button class="b" data-a="add">Agregar producto</button><p class="n">Horas estándar por pieza en cada subproceso.</p>`;
+ if(tab=='ven')return `<div class="wrap"><table>${head('Piezas vendidas','Total')}${S.pr.map((p,j)=>`<tr><td>${p.n}</td>${p.v.map((x,m)=>`<td>${I(`pr.${j}.v.${m}`,x)}</td>`).join('')}<td>${f(sum(p.v))}</td></tr>`).join('')}${row('Total piezas',r.vp,0,0,'tot')}${row('Ventas $',r.ven,0,0,'tot')}</table></div>`;
+ return `<div class="wrap"><table>${head('Concepto','Total / máx')}${row('Piezas vendidas',r.vp)}${row('Inventario final PT (pzas)',r.inv,0,1)}${row('Piezas a producir',r.pzs,0,0,'tot')}${row('Materia prima $ (con scrap)',r.mp,0,0,'tot')}
+ ${S.sp.map((s,i)=>row(`${s.n}: horas estándar`,r.std[i],0,0,'sub')+row(`${s.n}: horas reales (${s.e}%)`,r.real[i])+row(`${s.n}: headcount`,r.hc[i],1,1)).join('')}
+ ${row('Headcount operativo total',r.hct,1,1,'tot')}</table></div>`}
+function draw(){const r=calc(),t=TABS.find(x=>x[0]==tab)[1];
+ document.getElementById('nav').innerHTML=TABS.map(x=>`<button data-t="${x[0]}" aria-selected="${x[0]==tab}">${x[1]}</button>`).join('');
+ document.getElementById('app').innerHTML=`<h2>${t}</h2>${kpis(r)}${view(r)}`}
+document.addEventListener('change',e=>{const k=e.target.dataset.k;if(!k)return;const a=k.split('.');let o=S;
+ for(let i=0;i<a.length-1;i++)o=o[a[i]];o[a.at(-1)]=e.target.classList.contains('t')?e.target.value:(parseFloat(e.target.value)||0);save();draw()});
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+ if(b.dataset.t)tab=b.dataset.t;else if(b.dataset.a=='add')S.pr.push(nuevo());else if(b.dataset.a=='del')S.pr.splice(+b.dataset.j,1);else return;save();draw()});
+draw();
+</script></body></html>
