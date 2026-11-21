@@ -34,72 +34,93 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--cy)}
 .b{background:var(--cy);color:#fff;border:0;padding:8px 16px;font:inherit;cursor:pointer;margin-top:12px}
 .g2{background:none;border:1px solid var(--line);padding:3px 8px;font:inherit;cursor:pointer;color:var(--ink)}
 .n{color:var(--mut);font-size:12px;margin-top:8px}
+.mt{table-layout:fixed;min-width:1312px}
+.mt th,.mt td{padding:6px 6px}
+.mt td:first-child{white-space:normal}
+.mt input{width:100%}
+.mt .nm{display:flex;gap:4px}.mt input.t{width:auto;flex:1;min-width:0;text-align:left}
 </style></head><body>
-<aside><h1>Budget Builder</h1><p>By C.P. Miguel Angel Galindo · v0.4</p>
+<aside><h1>Budget Builder</h1><p>By C.P. Miguel Angel Galindo · v0.5</p>
 <div class="g">Sales Planning · Production Planning</div>
 <nav id="nav"></nav>
 <div class="g">Próximos bullets</div>
 <div class="soon">Gente y mano de obra<small>2</small></div><div class="soon">Inversiones y gasto<small>3</small></div><div class="soon">P&amp;L y board<small>4</small></div></aside>
 <main id="app"></main>
 <script>
-const M=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],KEY='budget-builder-v0.4';
+const M=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],KEY='budget-builder-v0.5';
 const TABS=[['sup','Basic Input'],['ven','Sales Plan'],['prd','Production Plan']];
 const A=x=>Array(12).fill(x);
-const def=()=>({mon:'MXN',mon2:'MXN',cob:1,tc:A(1),pd:A(0),
+const def=()=>({mon:'MXN',mon2:'MXN',tcv:1,cob:1,i0:1000,pd:A(0),pw:A(0),ot:A(0),
  tr:[{n:'1er turno',min:480,td:30,al:10,c:100},{n:'2do turno',min:480,td:30,al:10,c:0},{n:'3er turno',min:480,td:30,al:10,c:0}],
- cal:{dias:[22,20,22,21,21,22,23,21,22,22,20,22],paros:A(0)},
+ cal:{dias:[22,20,22,21,21,22,23,21,22,22,20,22],paros:A(0),fest:A(0)},
  sp:['Corte','Ensamble','Acabado','Empaque'].map((n,i)=>({n,e:A([85,80,85,90][i])})),
- pr:[{n:'Producto A',p:100,mp:40,sc:3,i0:1000,h:[6,15,6,3],v:A(1000)}]});
+ pr:[{n:'Producto A',p:100,mp:40,sc:3,h:[6,15,6,3],v:A(1000)}]});
 let S,tab='sup';
 try{S=JSON.parse(localStorage.getItem(KEY))||def()}catch(e){S=def()}
-const nuevo=()=>({n:'Producto',p:0,mp:0,sc:0,i0:0,h:S.sp.map(()=>0),v:A(0)});
+const nuevo=()=>({n:'Producto',p:0,mp:0,sc:0,h:S.sp.map(()=>0),v:A(0)});
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
 const f=(x,d=0)=>x.toLocaleString('es-MX',{minimumFractionDigits:d,maximumFractionDigits:d});
 const sum=a=>a.reduce((s,x)=>s+x,0),div=(a,b)=>b>0?a/b:0,mm=g=>M.map((_,m)=>g(m));
 const I=(k,v,c='')=>`<input class="${c}" data-k="${k}" value="${v}" ${c?'':'inputmode="decimal"'}>`;
 const net=t=>Math.max(0,(t.min-t.td)*(1-t.al/100));
-const dn=()=>S.cal.dias.map((d,m)=>Math.max(0,d-S.cal.paros[m]));
-function calc(){const z=()=>A(0),r={vp:z(),rvl:z(),rev:z(),pzs:z(),inv0:z(),inv:z(),mat:z(),matN:z(),std:S.sp.map(z)};
- S.pr.forEach(p=>{let inv=p.i0||0;for(let m=0;m<12;m++){const v=p.v[m],fin=S.cob*p.v[Math.min(m+1,11)],q=Math.max(0,v+fin-inv);r.inv0[m]+=inv;inv+=q-v;
-  r.vp[m]+=v;r.rvl[m]+=v*p.p;r.rev[m]+=v*p.p*S.tc[m];r.pzs[m]+=q;r.inv[m]+=inv;r.mat[m]+=q*p.mp;r.matN[m]+=q*p.mp*(1+p.sc/100);
-  S.sp.forEach((_,i)=>r.std[i][m]+=q*(p.h[i]||0))}});
+const dn=()=>S.cal.dias.map((d,m)=>Math.max(0,d-S.cal.paros[m]-S.cal.fest[m]));
+function calc(){const z=()=>A(0),n=S.pr.length,r={V:z(),rvl:z(),rev:z(),inv0:z(),inv:z(),reg:z(),ot:z(),pzs:z(),mat:z(),matN:z(),auto:z(),pwu:z(),std:S.sp.map(z),sto:S.sp.map(z),sst:S.sp.map(z)};
  r.dn=dn();r.used=r.dn.map((d,m)=>S.pd[m]>0?S.pd[m]:d);r.av=sum(S.tr.map(t=>t.c/100*net(t)));
- r.sd=mm(m=>div(r.vp[m],r.dn[m]));r.pw=mm(m=>div(r.pzs[m],r.used[m]));
+ let inv=S.i0||0;
+ for(let m=0;m<12;m++){const V=sum(S.pr.map(p=>p.v[m])),nx=sum(S.pr.map(p=>p.v[Math.min(m+1,11)])),U=r.used[m];
+  r.auto[m]=div(Math.max(0,V+S.cob*nx-inv),U);const pw=S.pw[m]>0?S.pw[m]:r.auto[m];r.pwu[m]=pw;
+  const reg=pw*U,ot=(S.ot[m]||0)*U;r.reg[m]=reg;r.ot[m]=ot;r.pzs[m]=reg+ot;r.V[m]=V;r.inv0[m]=inv;inv+=reg+ot-V;r.inv[m]=inv;
+  S.pr.forEach(p=>{const sh=V>0?p.v[m]/V:1/n,qr=reg*sh,qo=ot*sh;
+   r.rvl[m]+=p.v[m]*p.p;r.rev[m]+=p.v[m]*p.p*S.tcv;r.mat[m]+=(qr+qo)*p.mp;r.matN[m]+=(qr+qo)*p.mp*(1+p.sc/100);
+   S.sp.forEach((_,i)=>{const h=p.h[i]||0;r.std[i][m]+=qr*h;r.sto[i][m]+=qo*h;r.sst[i][m]+=p.v[m]*h})})}
+ r.sd=mm(m=>div(r.V[m],r.dn[m]));r.pwt=mm(m=>r.pwu[m]+(S.ot[m]||0));
  r.mpza=mm(m=>div(r.mat[m],r.pzs[m]));r.mday=mm(m=>div(r.mat[m],r.used[m]));
  r.scr=mm(m=>r.mat[m]>0?(r.matN[m]/r.mat[m]-1)*100:0);r.mnday=mm(m=>div(r.matN[m],r.used[m]));
- r.pza=r.std.map(a=>mm(m=>div(a[m],r.pzs[m])));r.sday=r.std.map(a=>mm(m=>div(a[m],r.used[m])));
- r.stot=mm(m=>sum(r.sday.map(a=>a[m])));
- r.req=r.sday.map((a,i)=>mm(m=>a[m]/(Math.max(S.sp[i].e[m],1)/100)));
+ r.pza=S.sp.map((_,i)=>mm(m=>div(r.std[i][m]+r.sto[i][m],r.pzs[m])));
+ r.sday=r.std.map(a=>mm(m=>div(a[m],r.used[m])));r.stot=mm(m=>sum(r.sday.map(a=>a[m])));
+ const ef=(i,m)=>Math.max(S.sp[i].e[m],1)/100;
+ r.req=r.sday.map((a,i)=>mm(m=>a[m]/ef(i,m)));
  r.hc=r.req.map(a=>a.map(x=>div(x,r.av)));r.hct=mm(m=>sum(r.hc.map(a=>a[m])));
+ r.oday=r.sto.map((a,i)=>mm(m=>div(a[m],r.used[m])/ef(i,m)));r.otot=mm(m=>sum(r.oday.map(a=>a[m])));
+ r.otp=mm(m=>div(r.otot[m],r.hct[m]));r.otpc=mm(m=>div(r.otp[m],r.av)*100);
+ r.sstt=mm(m=>sum(r.sst.map(a=>a[m])));
  r.wsd=sum(mm(m=>r.stot[m]*r.used[m]));r.wrq=sum(mm(m=>sum(r.req.map(a=>a[m]))*r.used[m]));return r}
 const head=(l,t)=>`<tr><th>${l}</th>${M.map(m=>`<th>${m}</th>`).join('')}<th>${t}</th></tr>`;
+const COLS=`<colgroup><col style="width:300px">${M.map(()=>'<col style="width:76px">').join('')}<col style="width:100px"></colgroup>`;
+const tbl=(l,t,b)=>`<div class="wrap"><table class="mt">${COLS}${head(l,t)}${b}</table></div>`;
+const sec=(h,b,tl='Total')=>`<h3>${h}</h3>${tbl('Concepto',tl,b)}`;
 const tot=(a,mx)=>mx==1?Math.max(...a):mx==2?sum(a)/a.length:mx==3?null:sum(a);
 const row=(l,a,d=0,mx=0,c='')=>{const t=tot(a,mx);return `<tr class="${c}"><td>${l}</td>${a.map(x=>`<td>${f(x,d)}</td>`).join('')}<td>${t===null?'':f(t,d)}</td></tr>`}
-const irow=(l,k,a,mx=0,bl=0)=>{const t=tot(a,mx);return `<tr><td>${l}</td>${a.map((x,m)=>`<td>${I(`${k}.${m}`,bl&&!x?'':x)}</td>`).join('')}<td>${t===null?'':f(t,mx==2?2:0)}</td></tr>`}
-const sec=(h,b,tl='Total')=>`<h3>${h}</h3><div class="wrap"><table>${head('Concepto',tl)}${b}</table></div>`;
+const irow=(l,k,a,mx=0,bl=0,ph=null,ta=null)=>{const t=tot(ta||a,mx);return `<tr><td>${l}</td>${a.map((x,m)=>`<td><input data-k="${k}.${m}" value="${bl&&!x?'':x}" inputmode="decimal"${ph?` placeholder="${f(ph[m],1)}"`:''}></td>`).join('')}<td>${t===null?'':f(t,mx==2?1:0)}</td></tr>`}
 function kpis(r){return `<div class="kpis">${[['Ingresos anuales ('+S.mon2+')',f(sum(r.rev))],['Piezas a producir',f(sum(r.pzs))],['Material neto ('+S.mon2+')',f(sum(r.matN))],['Eficiencia global',r.wrq?f(r.wsd/r.wrq*100,1)+'%':'-'],['Headcount promedio',f(sum(r.hct)/12,1)],['Headcount pico',f(Math.max(...r.hct),1)]].map(k=>`<div class="k"><span>${k[0]}</span><b>${k[1]}</b></div>`).join('')}</div>`}
 function view(r){
- if(tab=='sup')return `<h3 style="margin-top:0">General</h3><div class="row"><label>Moneda de venta${I('mon',S.mon,'t')}</label><label>Moneda de reporte${I('mon2',S.mon2,'t')}</label><label>Cobertura de inventario final (meses de venta)${I('cob',S.cob)}</label></div>
+ if(tab=='sup')return `<h3 style="margin-top:0">General</h3><div class="row"><label>Moneda de venta${I('mon',S.mon,'t')}</label><label>Moneda de reporte${I('mon2',S.mon2,'t')}</label><label>Tipo de cambio (${S.mon} a ${S.mon2})${I('tcv',S.tcv)}</label><label>Cobertura de stock objetivo (meses de venta)${I('cob',S.cob)}</label></div>
  <h3>Turnos y tiempo disponible</h3><div class="wrap"><table><tr><th>Turno</th><th>Minutos por turno</th><th>Tiempos muertos (min)</th><th>% allowance</th><th>Neto disponible (min)</th><th>% de la producción</th></tr>
  ${S.tr.map((t,i)=>`<tr><td>${t.n}</td><td>${I(`tr.${i}.min`,t.min)}</td><td>${I(`tr.${i}.td`,t.td)}</td><td>${I(`tr.${i}.al`,t.al)}</td><td><b>${f(net(t),1)}</b></td><td>${I(`tr.${i}.c`,t.c)}</td></tr>`).join('')}</table></div>
  <p class="n">Neto = (minutos − tiempos muertos) × (1 − % allowance). Tiempo disponible por persona (ponderado por % de la producción): <b>${f(r.av,1)} min/día</b>.</p>
- <h3>Calendario laboral</h3><div class="wrap"><table>${head('Concepto','Total')}${irow('Días posibles de trabajo','cal.dias',S.cal.dias)}${irow('Paros técnicos / días festivos','cal.paros',S.cal.paros)}${row('Días netos a trabajar',r.dn,0,0,'tot')}</table></div>
- <h3>Subprocesos y eficiencia planeada (%)</h3><div class="wrap"><table>${head('Subproceso','')}
- ${S.sp.map((s,i)=>`<tr><td>${I(`sp.${i}.n`,s.n,'t')}</td>${s.e.map((x,m)=>`<td>${I(`sp.${i}.e.${m}`,x)}</td>`).join('')}<td><button class="g2" data-a="dsp" data-j="${i}">Quitar</button></td></tr>`).join('')}</table></div>
- <button class="b" data-a="asp">Agregar subproceso</button>
- <h3>Productos</h3><div class="wrap"><table><tr><th>Producto</th><th>Precio venta (${S.mon})</th><th>Material std/pza (${S.mon2})</th><th>Scrap %</th><th>Inv. inicial (pzas, ene)</th>${S.sp.map(s=>`<th>Tiempo std ${s.n} (min/pza)</th>`).join('')}<th></th></tr>
- ${S.pr.map((p,j)=>`<tr><td>${I(`pr.${j}.n`,p.n,'t')}</td><td>${I(`pr.${j}.p`,p.p)}</td><td>${I(`pr.${j}.mp`,p.mp)}</td><td>${I(`pr.${j}.sc`,p.sc)}</td><td>${I(`pr.${j}.i0`,p.i0)}</td>${S.sp.map((_,i)=>`<td>${I(`pr.${j}.h.${i}`,p.h[i])}</td>`).join('')}<td><button class="g2" data-a="del" data-j="${j}">Quitar</button></td></tr>`).join('')}</table></div>
- <button class="b" data-a="add">Agregar producto</button>`;
- if(tab=='ven')return sec('Volumen de ventas',row('Días trabajados (netos, Basic Input)',r.dn,0,0,'sub')+S.pr.map((p,j)=>irow(`${p.n} (pcs/month)`,`pr.${j}.v`,p.v)).join('')+row('Total piezas (pcs/month)',r.vp,0,0,'tot')+row('Total piezas diarias (pcs/WD)',r.sd,1,2,'tot'),'Total / prom')
- +sec('Total ventas',row(`Precio de venta promedio (${S.mon})`,mm(m=>div(r.rvl[m],r.vp[m])),2,2)+irow(`Tipo de cambio (${S.mon} a ${S.mon2})`,'tc',S.tc,2)+row(`Total de ingresos (${S.mon2})`,r.rev,0,0,'tot'),'Total / prom');
- return sec('Requerimiento de ventas',row('Piezas a vender (pcs/month)',r.vp)+row('Piezas a vender por día (pcs/WD)',r.sd,1,2),'Total / prom')
- +`<h3>Inventario</h3><div class="row"><div class="k" style="min-width:240px"><span>Inventario inicial enero (pzas)</span><b>${f(sum(S.pr.map(p=>p.i0)))}</b></div></div>`
- +`<div class="wrap"><table>${head('Por mes','')}${row('Inventario inicial (pzas)',r.inv0,0,3)}${row('Inventario final (pzas)',r.inv,0,3)}</table></div>`
- +sec('Plan de producción',row('Días netos trabajados (Basic Input)',r.dn,0,0,'sub')+irow('Días de producción planeados (manual; vacío = días netos)','pd',S.pd,0,1)+row('Total piezas a producir (pcs/WD)',r.pw,1,2,'tot')+row('Total piezas a producir (pcs/month)',r.pzs,0,0,'tot'),'Total / prom')
- +sec('Material',row(`Material std por pieza (${S.mon2}/pza)`,r.mpza,2,2)+row('Piezas a producir diarias (pcs/WD)',r.pw,1,2)+row(`Total material estándar (${S.mon2}/día)`,r.mday,0,2)+row('% scrap permitido',r.scr,1,2)+row(`Total neto material (${S.mon2}/día)`,r.mnday,0,2,'tot')+row(`Total neto material (${S.mon2}/month)`,r.matN,0,0,'tot'),'Total / prom')
- +sec('Plan de personal & eficiencia',S.sp.map((s,i)=>row(`Tiempo std ${s.n} (min/pza)`,r.pza[i],1,2)).join('')+S.sp.map((s,i)=>row(`Total tiempo std ${s.n} (min/día)`,r.sday[i],0,2,'sub')).join('')+row('Total tiempo estándar (min/día)',r.stot,0,2,'tot')+S.sp.map((s,i)=>row(`Plan de eficiencia ${s.n} (%)`,s.e,1,2)).join(''),'Prom')
- +sec('Headcount requerido',row('Tiempo disponible por persona (min/día)',mm(()=>r.av),1,2,'sub')+S.sp.map((s,i)=>row(`Tiempo requerido ${s.n} con eficiencia (min/día)`,r.req[i],0,2)).join('')+S.sp.map((s,i)=>row(`Headcount ${s.n}`,r.hc[i],1,1)).join('')+row('Headcount total',r.hct,1,1,'tot'),'Máx / prom')
- +'<p class="n">Headcount = (tiempo estándar por día ÷ eficiencia planeada) ÷ tiempo disponible por persona por día.</p>'}
+ <h3>Calendario laboral</h3>${tbl('Concepto','Total',irow('Días posibles de trabajo','cal.dias',S.cal.dias)+irow('Paros técnicos','cal.paros',S.cal.paros)+irow('Días festivos','cal.fest',S.cal.fest)+row('Días netos a trabajar',r.dn,0,0,'tot'))}
+ <h3>Subprocesos</h3><div class="wrap"><table><tr><th>Subproceso</th><th></th></tr>${S.sp.map((s,i)=>`<tr><td>${I(`sp.${i}.n`,s.n,'t')}</td><td><button class="g2" data-a="dsp" data-j="${i}">Quitar</button></td></tr>`).join('')}</table></div>
+ <button class="b" data-a="asp">Agregar subproceso</button><p class="n">La eficiencia planeada de cada subproceso se edita en Production Plan.</p>
+ <h3>Productos</h3><div class="wrap"><table><tr><th>Producto</th><th>Precio venta (${S.mon})</th><th>Material std/pza (${S.mon2})</th><th>Scrap %</th><th></th></tr>
+ ${S.pr.map((p,j)=>`<tr><td>${I(`pr.${j}.n`,p.n,'t')}</td><td>${I(`pr.${j}.p`,p.p)}</td><td>${I(`pr.${j}.mp`,p.mp)}</td><td>${I(`pr.${j}.sc`,p.sc)}</td><td><button class="g2" data-a="del" data-j="${j}">Quitar</button></td></tr>`).join('')}</table></div>
+ <button class="b" data-a="add">Agregar producto</button><p class="n">Los tiempos estándar por proceso se editan en Sales Plan.</p>`;
+ if(tab=='ven')return `<h3 style="margin-top:0">Volumen de ventas</h3>${tbl('Concepto','Total / prom',row('Días trabajados (netos, Basic Input)',r.dn,0,0,'sub')
+ +S.pr.map((p,j)=>`<tr><td><div class="nm">${I(`pr.${j}.n`,p.n,'t')}<button class="g2" data-a="del" data-j="${j}">×</button></div></td>${p.v.map((x,m)=>`<td>${I(`pr.${j}.v.${m}`,x)}</td>`).join('')}<td>${f(sum(p.v))}</td></tr>`).join('')
+ +row('Total piezas (pcs/month)',r.V,0,0,'tot')+row('Total piezas diarias (pcs/WD)',r.sd,1,2,'tot'))}<button class="b" data-a="add">Agregar producto</button>`
+ +sec('Total ventas',row(`Precio de venta promedio (${S.mon})`,mm(m=>div(r.rvl[m],r.V[m])),2,2)+row(`Tipo de cambio (${S.mon} a ${S.mon2})`,A(S.tcv),2,2)+row(`Total de ingresos (${S.mon2})`,r.rev,0,0,'tot'),'Total / prom')
+ +`<h3>Tiempo estándar por pieza y proceso (min/pza)</h3><div class="wrap"><table><tr><th>Producto</th>${S.sp.map(s=>`<th>${s.n}</th>`).join('')}<th>Total min/pza</th></tr>${S.pr.map((p,j)=>`<tr><td>${p.n}</td>${S.sp.map((_,i)=>`<td>${I(`pr.${j}.h.${i}`,p.h[i])}</td>`).join('')}<td><b>${f(sum(p.h.slice(0,S.sp.length)),2)}</b></td></tr>`).join('')}</table></div>`
+ +sec('Tiempo estándar de piezas vendidas',S.sp.map((s,i)=>row(`${s.n} (min/month)`,r.sst[i])).join('')+row('Total tiempo estándar vendido (min/month)',r.sstt,0,0,'tot')+row('Total tiempo estándar vendido (min/WD)',mm(m=>div(r.sstt[m],r.dn[m])),0,2,'tot'),'Total / prom');
+ return sec('Requerimiento de ventas',row('Piezas a vender (pcs/month)',r.V)+row('Piezas a vender por día (pcs/WD)',r.sd,1,2),'Total / prom')
+ +`<h3>Stock</h3><div class="row"><div class="k" style="min-width:260px"><span>Stock inicial enero (pzas) · editable</span>${I('i0',S.i0)}</div></div>`
+ +tbl('Por mes','',row('Stock inicial (pzas)',r.inv0,0,3)+row('Stock final (pzas)',r.inv,0,3))
+ +sec('Plan de producción',row('Días netos trabajados (Basic Input)',r.dn,0,0,'sub')+irow('Días de producción planeados (vacío = días netos)','pd',S.pd,0,1,r.dn,r.used)
+ +irow('Total piezas a producir (pcs/WD) · editable','pw',S.pw,2,1,r.auto,r.pwu)+irow('Total piezas a producir (pcs/WD) Overtime · editable','ot',S.ot,2,1)
+ +row('Total piezas a producir (pcs/month)',r.pzs,0,0,'tot'),'Total / prom')
+ +sec('Material',row(`Material std por pieza (${S.mon2}/pza)`,r.mpza,2,2)+row('Piezas a producir diarias (pcs/WD, regular + overtime)',r.pwt,1,2)+row(`Total material estándar (${S.mon2}/día)`,r.mday,0,2)+row('% scrap permitido',r.scr,1,2)+row(`Total neto material (${S.mon2}/día)`,r.mnday,0,2,'tot')+row(`Total neto material (${S.mon2}/month)`,r.matN,0,0,'tot'),'Total / prom')
+ +sec('Plan de personal & eficiencia',S.sp.map((s,i)=>row(`Tiempo std ${s.n} (min/pza)`,r.pza[i],1,2)).join('')+S.sp.map((s,i)=>row(`Total tiempo std ${s.n} (min/día)`,r.sday[i],0,2,'sub')).join('')+row('Total tiempo estándar (min/día)',r.stot,0,2,'tot')+S.sp.map((s,i)=>irow(`Plan de eficiencia ${s.n} (%) · editable`,`sp.${i}.e`,s.e,2)).join(''),'Prom')
+ +sec('Headcount requerido (piezas regulares)',row('Tiempo disponible por persona (min/día)',mm(()=>r.av),1,2,'sub')+S.sp.map((s,i)=>row(`Tiempo requerido ${s.n} con eficiencia (min/día)`,r.req[i],0,2)).join('')+S.sp.map((s,i)=>row(`Headcount ${s.n}`,r.hc[i],1,1)).join('')+row('Headcount total',r.hct,1,1,'tot'),'Máx / prom')
+ +sec('Overtime (misma plantilla en tiempo extra)',S.sp.map((s,i)=>row(`Minutos extra ${s.n} con eficiencia (min/día)`,r.oday[i],0,2)).join('')+row('Total minutos extra requeridos (min/día)',r.otot,0,2,'tot')+row('Headcount regular (referencia)',r.hct,1,2,'sub')+row('Minutos extra por persona (min/día)',r.otp,1,2)+row('% de tiempo extra sobre jornada disponible',r.otpc,1,2,'tot'),'Prom')
+ +'<p class="n">Headcount = (tiempo estándar por día ÷ eficiencia planeada) ÷ tiempo disponible por persona por día, solo con piezas regulares. El overtime se cubre con esa misma plantilla. Si dejas vacío pcs/WD, se usa el valor sugerido (gris) para alcanzar la cobertura de stock objetivo.</p>'}
 function draw(){const r=calc(),t=TABS.find(x=>x[0]==tab)[1];
  document.getElementById('nav').innerHTML=TABS.map(x=>`<button data-t="${x[0]}" aria-selected="${x[0]==tab}">${x[1]}</button>`).join('');
  document.getElementById('app').innerHTML=`<h2>${t}</h2>${kpis(r)}${view(r)}`}

@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.5 (Bullet 1: ajustes de Sales Plan y Production Plan)
+- Basic Input: tipo de cambio general, paros técnicos y días festivos en renglones separados, eficiencia fuera de este módulo (lista de subprocesos con agregar/quitar).
+- Sales Plan: agregar, quitar y renombrar productos; tiempos estándar por pieza y proceso (editables) y tiempo estándar total de piezas vendidas.
+- Production Plan: stock inicial de enero editable, "stock" en lugar de inventario, pcs/WD regular y overtime editables, eficiencia por proceso y mes editable, apartado de overtime con la misma plantilla.
+- Todas las tablas mensuales con columnas alineadas.
+
 ## v0.4 (Bullet 1: Sales Plan y Production Plan)
 - Todo el tiempo en minutos (tiempo estándar por pieza, tiempo disponible, headcount).
 - Productos pasa a ser submódulo de Basic Input; se agregan moneda de venta y de reporte.
