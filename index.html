@@ -40,29 +40,35 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--cy)}
 .mt input{width:100%}
 .mt .nm{display:flex;gap:4px}.mt input.t{width:auto;flex:1;min-width:0;text-align:left}
 select{font:inherit;padding:5px 8px;border:1px solid var(--line);background:#fff;color:inherit;min-width:240px}
+.st{position:absolute;left:22px;right:22px;bottom:20px;font-size:12px;color:#9AA4AB}
 </style></head><body>
-<aside><h1>Budget Builder</h1><p>By C.P. Miguel Angel Galindo · v0.6</p>
+<aside><h1>Budget Builder</h1><p>By C.P. Miguel Angel Galindo · v0.7</p>
 <div class="g">Sales Planning · Production Planning</div>
 <nav id="nav"></nav>
 <div class="g">Próximos bullets</div>
-<div class="soon">Gente y mano de obra<small>2</small></div><div class="soon">Inversiones y gasto<small>3</small></div><div class="soon">P&amp;L y board<small>4</small></div></aside>
+<div class="soon">Gente y mano de obra<small>2</small></div><div class="soon">Inversiones y gasto<small>3</small></div><div class="soon">P&amp;L y board<small>4</small></div><div id="st" class="st">Sin conexión con Google Sheets</div></aside>
 <main id="app"></main>
 <script>
-const M=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],KEY='budget-builder-v0.6';
-const TABS=[['sup','Basic Input'],['ven','Sales Plan'],['prd','Production Plan'],['ppr','Production by Product']];
+const M=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],KEY='budget-builder-data',TSK='budget-builder-ts',CK='budget-builder-conn';
+const TABS=[['sup','Basic Input'],['ven','Sales Plan'],['prd','Production Plan'],['ppr','Production by Product'],['ver','Sync & Versions']];
 const A=x=>Array(12).fill(x);
 const def=()=>({mon:'MXN',mon2:'MXN',tcv:1,cob:1,i0:1000,pd:A(0),pw:A(0),
  tr:[{n:'1er turno',min:480,td:30,al:10,c:100},{n:'2do turno',min:480,td:30,al:10,c:0},{n:'3er turno',min:480,td:30,al:10,c:0}],
  cal:{dias:[22,20,22,21,21,22,23,21,22,22,20,22],paros:A(0),fest:A(0)},
  sp:['Corte','Ensamble','Acabado','Empaque'].map((n,i)=>({n,e:A([85,80,85,90][i])})),
  pr:[{n:'Producto A',p:100,mp:40,sc:3,h:[6,15,6,3],v:A(1000)}]});
-let S,tab='sup',sel=0;
-try{S=JSON.parse(localStorage.getItem(KEY))||def()}catch(e){S=def()}
+const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
+const migra=x=>{const d=def();for(const k in d)if(x[k]===undefined)x[k]=d[k];x.cal={...d.cal,...x.cal};return x};
+let S,C={},VERS=[],vname='',tmr=null,tab='sup',sel=0;
+try{S=migra(JSON.parse(lsGet(KEY)||lsGet('budget-builder-v0.6')||'null')||def())}catch(e){S=def()}
+try{C=JSON.parse(lsGet(CK)||'{}')}catch(e){}
 const nuevo=()=>({n:'Producto',p:0,mp:0,sc:0,h:S.sp.map(()=>0),v:A(0)});
-const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const persist=()=>{try{localStorage.setItem(KEY,JSON.stringify(S));localStorage.setItem(TSK,Date.now())}catch(e){}};
+const save=()=>{persist();sync()};
 const f=(x,d=0)=>x.toLocaleString('es-MX',{minimumFractionDigits:d,maximumFractionDigits:d});
 const sum=a=>a.reduce((s,x)=>s+x,0),div=(a,b)=>b>0?a/b:0,mm=g=>M.map((_,m)=>g(m));
-const I=(k,v,c='')=>`<input class="${c}" data-k="${k}" value="${v}" ${c?'':'inputmode="decimal"'}>`;
+const esc=x=>String(x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const I=(k,v,c='')=>`<input class="${c}" data-k="${k}" value="${esc(v)}" ${c?'':'inputmode="decimal"'}>`;
 const net=t=>Math.max(0,(t.min-t.td)*(1-t.al/100));
 const dn=()=>S.cal.dias.map((d,m)=>Math.max(0,d-S.cal.paros[m]-S.cal.fest[m]));
 const ef=(i,m)=>Math.max(S.sp[i].e[m],1)/100;
@@ -95,6 +101,7 @@ const irow=(l,k,a,mx=0,bl=0,ph=null,ta=null)=>{const t=tot(ta||a,mx);return `<tr
 function kpis(r){return `<div class="kpis">${[['Ingresos anuales ('+S.mon2+')',f(sum(r.rev))],['Piezas a producir',f(sum(r.pzs))],['Material neto ('+S.mon2+')',f(sum(r.matN))],['Eficiencia planta',r.wrq?f(r.effT,1)+'%':'-'],['Headcount promedio',f(sum(r.hct)/12,0)],['Headcount pico',f(Math.max(...r.hct),0)]].map(k=>`<div class="k"><span>${k[0]}</span><b>${k[1]}</b></div>`).join('')}</div>`}
 const NOTA='<p class="n">HC se muestra sin decimales, pero el cálculo los conserva; por eso la suma de los renglones puede diferir en una unidad del total.</p>';
 function view(r){
+ if(tab=='ver')return verView();
  if(tab=='sup')return `<h3 style="margin-top:0">General</h3><div class="row"><label>Moneda de venta${I('mon',S.mon,'t')}</label><label>Moneda de reporte${I('mon2',S.mon2,'t')}</label><label>Tipo de cambio (${S.mon} a ${S.mon2})${I('tcv',S.tcv)}</label><label>Cobertura de stock objetivo (meses de venta)${I('cob',S.cob)}</label></div>
  <h3>Turnos y tiempo disponible</h3><div class="wrap"><table><tr><th>Turno</th><th>Minutos por turno</th><th>Tiempos muertos (min)</th><th>% allowance</th><th>Neto disponible (min)</th><th>% de la producción</th></tr>
  ${S.tr.map((t,i)=>`<tr><td>${t.n}</td><td>${I(`tr.${i}.min`,t.min)}</td><td>${I(`tr.${i}.td`,t.td)}</td><td>${I(`tr.${i}.al`,t.al)}</td><td><b>${f(net(t),1)}</b></td><td>${I(`tr.${i}.c`,t.c)}</td></tr>`).join('')}</table></div>
@@ -129,16 +136,48 @@ function view(r){
  +sec('Producción',row('% de la producción de planta',mm(m=>div(q[m],r.pzs[m])*100),1,2)+row('Pzs a producir (pcs/mes)',q,0,0,'tot')+row('Pzs a producir (pcs/WD)',dd(q),1,2,'tot'),'Total / prom')
  +sec('Material',row(`Mat. std/pza (${S.mon2})`,A(p.mp),2,2)+row(`Mat. std total (${S.mon2}/día)`,dd(q.map(x=>x*p.mp)),0,2)+row('% scrap',A(p.sc),1,2)+row(`Mat. neto (${S.mon2}/día)`,dd(q.map(x=>x*p.mp*(1+p.sc/100))),0,2,'tot')+row(`Mat. neto (${S.mon2}/mes)`,q.map(x=>x*p.mp*(1+p.sc/100)),0,0,'tot'),'Total / prom')
  +sec('Tiempo estándar y headcount',S.sp.map((x,i)=>row(`Std ${x.n} (min/pza)`,A(p.h[i]||0),1,2)).join('')+S.sp.map((x,i)=>row(`Std total ${x.n} (min/día)`,sd[i],0,2,'sub')).join('')+row('Std total (min/día)',mm(m=>sum(sd.map(a=>a[m]))),0,2,'tot')+S.sp.map((x,i)=>row(`Op. time ${x.n} (min/día)`,rq[i],0,2)).join('')+row('Op. time total (min/día)',mm(m=>sum(rq.map(a=>a[m]))),0,2,'tot')+S.sp.map((x,i)=>row(`HC ${x.n}`,hc[i],0,1)).join('')+row('HC total',mm(m=>sum(hc.map(a=>a[m]))),0,1,'tot'),'Máx / prom')+NOTA}
+
+const conn=()=>!!(C.url&&C.token),hora=()=>new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+function st(msg,err){const el=document.getElementById('st');if(el){el.textContent=msg;el.style.color=err?'#E8A0A0':''}}
+async function api(p){const r=await fetch(C.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:C.token,...p})});const j=await r.json();if(!j.ok)throw new Error(j.error||'Error');return j}
+function sync(){if(!conn())return;clearTimeout(tmr);st('Cambios sin guardar…');tmr=setTimeout(push,1500)}
+function exportRows(r){const R=(l,a,t)=>[l,...a.map(x=>+x.toFixed(4)),+(t===undefined?sum(a):t).toFixed(4)];
+ return [['Concepto',...M,'Total'],R('Ventas (pcs/mes)',r.V),R(`Ingresos (${S.mon2})`,r.rev),R('Pzs a producir (pcs/mes)',r.pzs),R('Stock final (pzs)',r.inv,r.inv[11]),
+ R(`Mat. neto (${S.mon2}/mes)`,r.matN),R('Std total (min/día)',r.stot,sum(r.stot)/12),R('Op. time total (min/día)',r.optot,sum(r.optot)/12),R('Efic. planta (%)',r.effp,r.effT),
+ ...S.sp.map((x,i)=>R(`HC ${x.n}`,r.hc[i],Math.max(...r.hc[i]))),R('HC total',r.hct,Math.max(...r.hct))]}
+async function push(){if(!conn())return;st('Guardando…');try{await api({action:'saveDraft',data:S,export:exportRows(calc())});try{localStorage.setItem(TSK,Date.now())}catch(e){}st('Guardado '+hora())}catch(e){st('Sin guardar: '+e.message,1)}}
+async function refreshVers(){const L=await api({action:'list'});VERS=L.items.filter(x=>x.tipo=='version').sort((a,b)=>b.fecha-a.fecha);return L}
+async function conectar(){try{st('Conectando…');await api({action:'ping'});const L=await refreshVers(),d=L.items.find(x=>x.tipo=='draft');
+ if(d&&confirm('Ya hay datos guardados en el Sheet.\n\nAceptar = cargar los del Sheet\nCancelar = reemplazarlos con los de este navegador')){const g=await api({action:'load',id:'draft'});if(g.data){S=migra(g.data);persist()}}
+ else await push();
+ st('Sincronizado '+hora());draw()}catch(e){st('Error: '+e.message,1)}}
+async function inicio(){if(!conn())return;try{const L=await refreshVers(),d=L.items.find(x=>x.tipo=='draft');
+ if(d&&d.fecha>(+lsGet(TSK)||0)){const g=await api({action:'load',id:'draft'});if(g.data){S=migra(g.data);persist()}}else await push();
+ st('Sincronizado '+hora());draw()}catch(e){st('Sin conexión: '+e.message,1)}}
+async function guardarVersion(){if(!conn()){alert('Primero conecta el Google Sheet.');return}const n=vname.trim();if(!n){alert('Escribe un nombre para la versión.');return}
+ try{st('Guardando versión…');await api({action:'saveVersion',name:n,data:S,export:exportRows(calc())});vname='';await refreshVers();st('Versión guardada '+hora());draw()}catch(e){st('Error: '+e.message,1)}}
+async function cargarVersion(id){if(!confirm('Se reemplazará el trabajo actual con esta versión. ¿Continuar?'))return;
+ try{const g=await api({action:'load',id});if(g.data){S=migra(g.data);persist();await push();draw()}}catch(e){st('Error: '+e.message,1)}}
+async function borrarVersion(id){if(!confirm('¿Borrar esta versión? No se puede deshacer.'))return;
+ try{await api({action:'delete',id});await refreshVers();st('Versión borrada '+hora());draw()}catch(e){st('Error: '+e.message,1)}}
+function verView(){return `<h3 style="margin-top:0">Conexión con Google Sheets</h3><div class="row"><label>URL de la aplicación web (Apps Script)<input class="t" style="width:440px" data-c="url" value="${esc(C.url||'')}"></label><label>Clave secreta<input class="t" type="password" style="width:220px" data-c="token" value="${esc(C.token||'')}"></label></div>
+ <button class="b" data-a="conn">Conectar y sincronizar</button><p class="n">Una vez conectado, todo lo que captures se guarda solo en el Sheet ("Trabajo actual"). Al abrir la app en otro equipo se carga lo más reciente. Pasos de configuración en docs/google-sheets.md.</p>
+ <h3>Guardar versión</h3><div class="row"><label>Nombre (por ejemplo: Budget 2027, Forecast Q1)<input class="t" style="width:340px" data-vn value="${esc(vname)}"></label></div><button class="b" data-a="saveV">Guardar versión</button>
+ <h3>Versiones guardadas</h3>${VERS.length?`<div class="wrap"><table><tr><th>Versión</th><th>Guardada</th><th></th></tr>${VERS.map(v=>`<tr><td>${esc(v.nombre)}</td><td>${new Date(v.fecha).toLocaleString('es-MX')}</td><td><button class="g2" data-a="loadV" data-id="${esc(v.id)}">Cargar</button> <button class="g2" data-a="delV" data-id="${esc(v.id)}">Borrar</button></td></tr>`).join('')}</table></div>`:'<p class="n">Aún no hay versiones guardadas.</p>'}
+ <p class="n">Cada versión también crea una hoja legible "Plan - nombre" en el Google Sheet.</p>`}
 function draw(){const r=calc(),t=TABS.find(x=>x[0]==tab)[1];
  document.getElementById('nav').innerHTML=TABS.map(x=>`<button data-t="${x[0]}" aria-selected="${x[0]==tab}">${x[1]}</button>`).join('');
  document.getElementById('app').innerHTML=`<h2>${t}</h2>${kpis(r)}${view(r)}`}
-document.addEventListener('change',e=>{if(e.target.dataset.sel!==undefined){sel=+e.target.value;draw();return}
+document.addEventListener('change',e=>{const d=e.target.dataset;if(d.sel!==undefined){sel=+e.target.value;draw();return}
+ if(d.c){C[d.c]=e.target.value.trim();try{localStorage.setItem(CK,JSON.stringify(C))}catch(x){}return}
+ if(d.vn!==undefined){vname=e.target.value;return}
  const k=e.target.dataset.k;if(!k)return;const a=k.split('.');let o=S;
  for(let i=0;i<a.length-1;i++)o=o[a[i]];o[a.at(-1)]=e.target.classList.contains('t')?e.target.value:(parseFloat(e.target.value)||0);save();draw()});
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const a=b.dataset.a,j=+b.dataset.j;
+ if(a=='conn'){conectar();return}if(a=='saveV'){guardarVersion();return}if(a=='loadV'){cargarVersion(b.dataset.id);return}if(a=='delV'){borrarVersion(b.dataset.id);return}
  if(b.dataset.t)tab=b.dataset.t;else if(a=='add')S.pr.push(nuevo());else if(a=='del')S.pr.splice(j,1);
  else if(a=='asp'){S.sp.push({n:'Proceso '+(S.sp.length+1),e:A(85)});S.pr.forEach(p=>p.h.push(0))}
  else if(a=='dsp'){if(S.sp.length>1){S.sp.splice(j,1);S.pr.forEach(p=>p.h.splice(j,1))}}
  else return;save();draw()});
-draw();
+draw();inicio();
 </script></body></html>

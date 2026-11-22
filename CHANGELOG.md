@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.7 (Sincronización con Google Sheets)
+- Nueva pestaña Sync & Versions: conexión a un Google Sheet mediante Apps Script (apps-script/Code.gs, pasos en docs/google-sheets.md).
+- Autoguardado de lo capturado ("Trabajo actual"); al abrir la app carga lo más reciente.
+- Versiones con nombre (por ejemplo Budget 2027, Forecast Q1): guardar, cargar y borrar; cada una crea una hoja legible "Plan - nombre".
+- El almacenamiento del navegador ya no cambia de nombre entre versiones y los datos se migran en lugar de reiniciarse.
+
 ## v0.6 (Bullet 1: refinamientos)
 - Basic Input sin subprocesos: los procesos se administran en Sales Plan (renglones por proceso, columnas por producto, agregar/quitar procesos).
 - Production Plan con conceptos resumidos y acrónimos; HC sin decimales con nota al pie; Op. time total y eficiencia de planta (Std total ÷ Op. time total).
