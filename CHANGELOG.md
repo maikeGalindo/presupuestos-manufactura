@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.8 (Monedas y producción por producto)
+- Basic Input: Moneda 1 (venta/base), Moneda 2 (reporte) y Moneda 3 opcional, con sus tipos de cambio; precio de venta y material estándar se capturan en Moneda 1.
+- Sales Plan: días trabajados del cliente editables; precio de venta por producto con selector de moneda de visualización; tiempo estándar de piezas vendidas totalizado o por producto.
+- Production Plan: ventas, stock, plan de producción y eficiencia por producto (totales); material totalizado o por producto.
+- Production by Product pasa a ser submódulo de edición: pcs/WD, eficiencia por proceso, stock inicial, material y % scrap por producto.
+- Los datos de versiones anteriores se migran (stock inicial, producción manual y eficiencia se reparten por producto).
+
 ## v0.7 (Sincronización con Google Sheets)
 - Nueva pestaña Sync & Versions: conexión a un Google Sheet mediante Apps Script (apps-script/Code.gs, pasos en docs/google-sheets.md).
 - Autoguardado de lo capturado ("Trabajo actual"); al abrir la app carga lo más reciente.
